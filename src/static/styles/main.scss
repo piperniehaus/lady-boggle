@@ -3,3 +3,16 @@ $icon-font-path: '~bootstrap-sass/assets/fonts/bootstrap/';
 @import '~bootstrap-sass/assets/stylesheets/_bootstrap.scss';
 
 // can add Boostrap overrides, additional Sass/CSS below...
+
+.letter {
+  display: inline-block;
+  margin: 5px;
+  padding: 5px 15px;
+  font-size: 24px;
+  text-transform: uppercase;
+  border: 1px solid blue;
+  background-color: #EEE;
+}
+.letter--highlighted {
+  background-color: #cc33ff;
+}
