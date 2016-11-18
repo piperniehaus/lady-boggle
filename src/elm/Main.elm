@@ -4,6 +4,7 @@ import Html exposing (..)
 import Html.Attributes exposing (placeholder, value, classList, class)
 import Html.Events exposing (onClick, onInput)
 import Dict exposing (Dict)
+import Set exposing (Set)
 
 
 -- APP
@@ -43,11 +44,16 @@ model =
     { board = board, score = 0, currentGuess = "" }
 
 
+boardWidth : Int
+boardWidth =
+    3
+
+
 board : BoardDict
 board =
     let
         letters =
-            [ [ "a", "b", "e" ], [ "c", "d", "k" ], [ "p", "w", "z" ] ]
+            [ [ "a", "b", "a" ], [ "a", "d", "k" ], [ "p", "w", "z" ] ]
 
         tilesForRow : List String -> Row
         tilesForRow row =
@@ -84,8 +90,34 @@ update msg model =
 
         UpdateGuess guess ->
             let
+                firstLetter : String -> String
+                firstLetter string =
+                    String.slice 0 1 string
+
+                matchFirstLetter : Point -> Tile -> Tile
+                matchFirstLetter point tile =
+                    checkTile (firstLetter guess) point tile
+
+                isMatching : Point -> Tile -> Bool
+                isMatching _ tile =
+                    tile.match
+
+                neighborList : List Point
+                neighborList =
+                    List.concatMap getNeighbors <|
+                        Dict.keys <|
+                            Dict.filter isMatching <|
+                                Dict.map matchFirstLetter model.board
+
+                mappingThingy : Point -> Tile -> Tile
+                mappingThingy point tile =
+                    if List.member point neighborList then
+                        { tile | match = True }
+                    else
+                        tile
+
                 newDict =
-                    Dict.map (checkTile <| firstLetter guess) model.board
+                    Dict.map mappingThingy model.board
             in
                 { model
                     | currentGuess = guess
@@ -93,24 +125,20 @@ update msg model =
                 }
 
 
-checkWord : String -> BoardDict -> BoardDict
-checkWord guess board =
-    board
-
-
-
--- let
-
-
-firstLetter : String -> String
-firstLetter string =
-    String.slice 0 1 string
-
-
-
---
--- in
--- Dict.map (checkTile "a") (getBoardDict board)
+getNeighbors : Point -> List Point
+getNeighbors ( x, y ) =
+    Set.toList <|
+        Set.remove ( x, y ) <|
+            Set.fromList
+                [ ( max (x - 1) 0, max (y - 1) 0 )
+                , ( max (x - 1) 0, y )
+                , ( max (x - 1) 0, min (y + 1) boardWidth )
+                , ( x, max (y - 1) 0 )
+                , ( x, min (y + 1) boardWidth )
+                , ( min (x + 1) boardWidth, max (y - 1) 0 )
+                , ( min (x + 1) boardWidth, y )
+                , ( min (x + 1) boardWidth, min (y + 1) boardWidth )
+                ]
 
 
 checkTile : String -> Point -> Tile -> Tile
@@ -137,14 +165,7 @@ getBoardDict board =
 
 
 
--- getBoardFromDict : Board -> BoardDict
--- getBoardFromDict board =
---   let
---     buildRow
--- getRowDict rowIndex row =
 -- VIEW
--- Html is defined as: elem [ attribs ][ children ]
--- CSS can be applied via class names or inline style attrib
 
 
 view : Model -> Html Msg
