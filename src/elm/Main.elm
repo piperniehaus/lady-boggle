@@ -1,8 +1,9 @@
 module Main exposing (..)
 
 import Html exposing (..)
-import Html.Attributes exposing (placeholder, value, classList)
+import Html.Attributes exposing (placeholder, value, classList, class)
 import Html.Events exposing (onClick, onInput)
+import Dict exposing (Dict)
 
 
 -- APP
@@ -18,7 +19,7 @@ main =
 
 
 type alias Model =
-    { board : Board, score : Int, currentGuess : String }
+    { board : BoardDict, score : Int, currentGuess : String }
 
 
 type alias Board =
@@ -27,6 +28,10 @@ type alias Board =
 
 type alias Tile =
     { letter : String, match : Bool }
+
+
+type alias Point =
+    ( Int, Int )
 
 
 type alias Row =
@@ -38,11 +43,11 @@ model =
     { board = board, score = 0, currentGuess = "" }
 
 
-board : Board
+board : BoardDict
 board =
     let
         letters =
-            [ [ "a", "b" ], [ "c", "d" ] ]
+            [ [ "a", "b", "e" ], [ "c", "d", "k" ], [ "p", "w", "z" ] ]
 
         tilesForRow : List String -> Row
         tilesForRow row =
@@ -52,7 +57,7 @@ board =
         tileForLetter letter =
             { letter = letter, match = False }
     in
-        List.map tilesForRow letters
+        getBoardDict <| List.map tilesForRow letters
 
 
 
@@ -78,34 +83,65 @@ update msg model =
             }
 
         UpdateGuess guess ->
-            { model
-                | currentGuess = guess
-                , board = checkWord guess model.board
-            }
+            let
+                newDict =
+                    Dict.map (checkTile <| firstLetter guess) model.board
+            in
+                { model
+                    | currentGuess = guess
+                    , board = newDict
+                }
 
 
-checkWord : String -> Board -> Board
+checkWord : String -> BoardDict -> BoardDict
 checkWord guess board =
+    board
+
+
+
+-- let
+
+
+firstLetter : String -> String
+firstLetter string =
+    String.slice 0 1 string
+
+
+
+--
+-- in
+-- Dict.map (checkTile "a") (getBoardDict board)
+
+
+checkTile : String -> Point -> Tile -> Tile
+checkTile guessLetter location tile =
+    { tile | match = (guessLetter == tile.letter) }
+
+
+type alias BoardDict =
+    Dict Point Tile
+
+
+getBoardDict : Board -> BoardDict
+getBoardDict board =
     let
-        firstLetter : String -> String
-        firstLetter string =
-            String.slice 0 1 string
+        encodeTile : Int -> Int -> Tile -> ( Point, Tile )
+        encodeTile x y tile =
+            ( ( x, y ), tile )
 
-        checkRow : Row -> Row
-        checkRow row =
-            row
-
-        -- checkForLetter : String -> Row -> Row
-        -- checkForLetter remainingGuess row =
-        --     List.map (checkTile (firstLetter remainingGuess))
-        checkTile : String -> Tile -> Tile
-        checkTile guessLetter tile =
-            { tile | match = (guessLetter == tile.letter) }
+        encodeRow : Int -> Row -> List ( Point, Tile )
+        encodeRow index row =
+            List.indexedMap (encodeTile index) row
     in
-        List.map checkRow board
+        Dict.fromList <| List.concatMap (\n -> n) (List.indexedMap encodeRow board)
 
 
 
+-- getBoardFromDict : Board -> BoardDict
+-- getBoardFromDict board =
+--   let
+--     buildRow
+-- getRowDict rowIndex row =
 -- VIEW
 -- Html is defined as: elem [ attribs ][ children ]
 -- CSS can be applied via class names or inline style attrib
@@ -122,9 +158,10 @@ view model =
     in
         div []
             [ h2 [] [ text <| toString model.score ]
-            , div [] (List.map makeRow model.board)
+            , div [ class "boardContainer" ] (List.map makeTile <| Dict.values model.board)
             , div []
                 [ input [ placeholder "Guess away!", onInput UpdateGuess, value model.currentGuess ] []
                 , button [ onClick ScoreWord ] [ text "Check" ]
                 ]
+            , div [] [ text <| toString model.board ]
             ]
