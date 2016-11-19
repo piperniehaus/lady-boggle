@@ -125,7 +125,97 @@ update msg model =
                 }
 
 
-getNeighbors : Point -> List Point
+
+-- starting points are the places where the first letter matches
+
+
+updateGuess : String -> String
+updateGuess guess =
+    -- guess - the first letter
+    guess
+
+
+type alias StartingPoints =
+    List Point
+
+
+toPath : Point -> Path
+toPath point =
+    [ point ]
+
+
+matchingNeighbors : BoardDict -> Point -> String -> List Point
+matchingNeighbors board point letter =
+    let
+        matchList ( x, y ) =
+            Set.toList <|
+                Set.remove ( x, y ) <|
+                    Set.fromList
+                        [ ( max (x - 1) 0, max (y - 1) 0 )
+                        , ( max (x - 1) 0, y )
+                        , ( max (x - 1) 0, min (y + 1) boardWidth )
+                        , ( x, max (y - 1) 0 )
+                        , ( x, min (y + 1) boardWidth )
+                        , ( min (x + 1) boardWidth, max (y - 1) 0 )
+                        , ( min (x + 1) boardWidth, y )
+                        , ( min (x + 1) boardWidth, min (y + 1) boardWidth )
+                        ]
+
+        isMatch : Point -> Tile -> Bool
+        isMatch point tile =
+            (List.member point matchList) && tile.letter == letter
+    in
+        Dict.keys <| Dict.filter isMatch board
+
+
+explorePath : BoardDict -> Path -> String -> Path
+explorePath board path word =
+    let
+        lastPoint : path -> point
+        lastPoint path =
+            List.drop 1 path
+
+        shortenedWord word =
+            String.dropLeft 1 word
+
+        travel : BoardDict -> String -> Path -> Path
+        travel board path word =
+            List.append (matchingNeighbors board (lastPoint path) word) path
+    in
+        if String.length word > 0 then
+            explorePath board (travel board path word) <| shortenedWord word
+        else
+            path
+
+
+findPaths : StartingPoints -> Paths
+findPaths startingPoints =
+    -- iterate through starting points
+    List.map (\point -> explorePath (toPath point) "remainingGuess") startingPoints
+
+
+type alias Path =
+    List Point
+
+
+type alias Paths =
+    List Path
+
+
+
+--
+-- updateGuess(guess)
+--  startingPoints = List(tuple)
+--  startingPoints.each (
+-- path = explorePoint([point], remainingWord))
+-- if path then update dictionary with things in path
+--explorePoint(list, word)
+-- if word is nil return list
+-- else if no neighbords return nil
+-- getNeighbors(tail(list)).filter(neighbor.letter == firstLetter word, explorePoint(list+neighbor, remainingWord))
+
+
+getNeighbors : Point -> Tile -> Bool
 getNeighbors ( x, y ) =
     Set.toList <|
         Set.remove ( x, y ) <|
@@ -139,6 +229,10 @@ getNeighbors ( x, y ) =
                 , ( min (x + 1) boardWidth, y )
                 , ( min (x + 1) boardWidth, min (y + 1) boardWidth )
                 ]
+
+
+type alias Entry =
+    ( Point, Tile )
 
 
 checkTile : String -> Point -> Tile -> Tile
