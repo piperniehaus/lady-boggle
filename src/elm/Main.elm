@@ -6,6 +6,7 @@ import Html.Events exposing (onClick, onInput)
 import Dict exposing (Dict)
 import Set exposing (Set)
 import Array exposing (Array)
+import Debug exposing (..)
 
 
 -- APP
@@ -120,6 +121,20 @@ update msg model =
                 matchFirstLetter point tile =
                     checkTile (firstLetter guess) tile
 
+                findPath : List Point
+                findPath =
+                    log "stuff"
+                        (List.concatMap
+                            (\point -> (log "path" (explorePath model.board [ point ] guess)))
+                         <|
+                            Dict.keys firstLetterMatches
+                        )
+
+                firstLetterMatches : BoardDict
+                firstLetterMatches =
+                    Dict.filter isMatching <|
+                        Dict.map matchFirstLetter model.board
+
                 isMatching : Point -> Tile -> Bool
                 isMatching _ tile =
                     tile.match
@@ -133,7 +148,7 @@ update msg model =
 
                 findNeighbors : Point -> Tile -> Tile
                 findNeighbors point tile =
-                    if List.member point neighborList then
+                    if List.member point (log "fn path" findPath) then
                         { tile | match = True }
                     else
                         tile
@@ -160,10 +175,10 @@ explorePath board path word =
 
         travel : BoardDict -> String -> Path -> Path
         travel board word path =
-            List.append (matchingNeighbors board (lastPoint path) (firstLetter word)) path
+            List.append (log "matching neighbors" (matchingNeighbors board (lastPoint path) (firstLetter word))) path
     in
         if String.length word > 0 then
-            explorePath board (travel board word path) <| shortenedWord word
+            log "path" (explorePath board (travel board word path) <| shortenedWord word)
         else
             path
 
@@ -171,11 +186,16 @@ explorePath board path word =
 matchingNeighbors : BoardDict -> Maybe Point -> String -> List Point
 matchingNeighbors board point letter =
     let
-        isMatch : Point -> Tile -> Bool
-        isMatch point tile =
-            (List.member point <| getNeighbors point) && tile.letter == letter
+        isMatch : Point -> Point -> Tile -> Bool
+        isMatch origin point tile =
+            (List.member point <| getNeighbors origin) && (tile.letter == letter)
     in
-        Dict.keys <| Dict.filter isMatch board
+        case point of
+            Just value ->
+                Dict.keys <| Dict.filter (isMatch value) board
+
+            Nothing ->
+                []
 
 
 getNeighbors : Point -> List Point
