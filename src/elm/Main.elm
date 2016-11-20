@@ -148,14 +148,20 @@ update msg model =
 
                 findNeighbors : Point -> Tile -> Tile
                 findNeighbors point tile =
+                    if List.member point neighborList then
+                        { tile | match = True }
+                    else
+                        tile
+
+                findMatches : Point -> Tile -> Tile
+                findMatches point tile =
                     if List.member point (log "fn path" findPath) then
                         { tile | match = True }
                     else
                         tile
 
-                -- findMatches : Point -> Tile -> Path
                 newDict =
-                    Dict.map findNeighbors board
+                    Dict.map findMatches board
             in
                 { model
                     | currentGuess = guess
