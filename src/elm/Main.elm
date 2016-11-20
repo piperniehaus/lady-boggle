@@ -225,6 +225,25 @@ getHighlightedPoints paths =
     Set.fromList (List.concat paths)
 
 
+setMatches : BoardDict -> String -> BoardDict
+setMatches board string =
+    let
+        highlightedPoints : Set Point
+        highlightedPoints =
+            getHighlightedPoints <| getFlatPaths string (getAllPaths model.board string)
+
+        updateMatch : Point -> Tile -> Tile
+        updateMatch point tile =
+            { tile | match = (isMatch point) }
+
+        isMatch : Point -> Bool
+        isMatch point =
+            Set.member point highlightedPoints
+    in
+        -- Set.map highlightedPoints
+        Dict.map updateMatch board
+
+
 
 -- VIEW
 
