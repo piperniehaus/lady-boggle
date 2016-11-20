@@ -146,13 +146,6 @@ update msg model =
                             Dict.filter isMatching <|
                                 Dict.map matchFirstLetter model.board
 
-                findNeighbors : Point -> Tile -> Tile
-                findNeighbors point tile =
-                    if List.member point neighborList then
-                        { tile | match = True }
-                    else
-                        tile
-
                 findMatches : Point -> Tile -> Tile
                 findMatches point tile =
                     if List.member point (log "fn path" findPath) then
@@ -174,7 +167,7 @@ explorePath board path word =
     let
         lastPoint : Path -> Maybe Point
         lastPoint path =
-            Array.get ((List.length path) - 1) (Array.fromList path)
+            Array.get 0 (Array.fromList path)
 
         shortenedWord word =
             String.dropLeft 1 word
