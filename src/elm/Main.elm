@@ -6,7 +6,6 @@ import Html.Events exposing (onClick, onInput)
 import Dict exposing (Dict)
 import Set exposing (Set)
 import Array exposing (Array)
-import Debug exposing (..)
 
 
 -- APP
@@ -64,14 +63,19 @@ model =
 
 boardWidth : Int
 boardWidth =
-    3
+    5
 
 
 board : BoardDict
 board =
     let
         letters =
-            [ [ "a", "b", "a" ], [ "a", "d", "k" ], [ "p", "w", "z" ] ]
+            [ [ "l", "r", "e", "o", "s" ]
+            , [ "e", "d", "i", "w", "f" ]
+            , [ "j", "e", "m", "w", "e" ]
+            , [ "a", "f", "l", "t", "r" ]
+            , [ "o", "s", "a", "h", "h" ]
+            ]
 
         tilesForRow : List String -> Row
         tilesForRow row =
@@ -121,11 +125,11 @@ update msg model =
                 matchFirstLetter point tile =
                     checkTile (firstLetter guess) tile
 
-                findPath : List Point
-                findPath =
-                    log "stuff"
-                        (List.concatMap
-                            (\point -> (log "path" (explorePath model.board [ point ] guess)))
+                findPaths : List Path
+                findPaths =
+                    List.concat <|
+                        (List.map
+                            (\point -> (explorePath model.board [ point ] (shortenedWord guess)))
                          <|
                             Dict.keys firstLetterMatches
                         )
@@ -148,7 +152,7 @@ update msg model =
 
                 findMatches : Point -> Tile -> Tile
                 findMatches point tile =
-                    if List.member point (log "fn path" findPath) then
+                    if List.member point (List.concat findPaths) then
                         { tile | match = True }
                     else
                         tile
@@ -162,24 +166,35 @@ update msg model =
                 }
 
 
-explorePath : BoardDict -> Path -> String -> Path
+shortenedWord : String -> String
+shortenedWord word =
+    String.dropLeft 1 word
+
+
+explorePath : BoardDict -> Path -> String -> List Path
 explorePath board path word =
     let
         lastPoint : Path -> Maybe Point
         lastPoint path =
             Array.get 0 (Array.fromList path)
 
-        shortenedWord word =
-            String.dropLeft 1 word
-
-        travel : BoardDict -> String -> Path -> Path
+        travel : BoardDict -> String -> Path -> List Path
         travel board word path =
-            List.append (log "matching neighbors" (matchingNeighbors board (lastPoint path) (firstLetter word))) path
+            List.map
+                (\match ->
+                    if (not <| List.member match path) then
+                        List.append [ match ] path
+                    else
+                        []
+                )
+                (matchingNeighbors board (lastPoint path) (firstLetter word))
+
+        -- TODO only append neighbors that don't already exist
     in
         if String.length word > 0 then
-            log "path" (explorePath board (travel board word path) <| shortenedWord word)
+            List.concatMap (\aPath -> (explorePath board aPath <| shortenedWord word)) (travel board word path)
         else
-            path
+            [ path ]
 
 
 matchingNeighbors : BoardDict -> Maybe Point -> String -> List Point
@@ -247,5 +262,4 @@ view model =
                 [ input [ placeholder "Guess away!", onInput UpdateGuess, value model.currentGuess ] []
                 , button [ onClick ScoreWord ] [ text "Check" ]
                 ]
-            , div [] [ text <| toString model.board ]
             ]

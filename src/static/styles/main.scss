@@ -5,7 +5,7 @@ $icon-font-path: '~bootstrap-sass/assets/fonts/bootstrap/';
 // can add Boostrap overrides, additional Sass/CSS below...
 
 .boardContainer {
-  width: 200px;
+  width: 350px;
 }
 .letter {
   display: inline-block;
@@ -15,6 +15,8 @@ $icon-font-path: '~bootstrap-sass/assets/fonts/bootstrap/';
   text-transform: uppercase;
   border: 1px solid blue;
   background-color: #EEE;
+  height: 60px;
+  width: 60px;
 }
 .letter--highlighted {
   background-color: #cc33ff;
