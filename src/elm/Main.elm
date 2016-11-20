@@ -152,7 +152,7 @@ update msg model =
 
                 findMatches : Point -> Tile -> Tile
                 findMatches point tile =
-                    if List.member point (List.concat findPaths) then
+                    if List.member point (Maybe.withDefault [] (List.head findPaths)) then
                         { tile | match = True }
                     else
                         tile
