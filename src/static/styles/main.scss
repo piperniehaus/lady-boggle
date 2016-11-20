@@ -5,12 +5,14 @@ $icon-font-path: '~bootstrap-sass/assets/fonts/bootstrap/';
 // can add Boostrap overrides, additional Sass/CSS below...
 
 .boardContainer {
-  width: 200px;
+  width: 300px;
 }
 .letter {
   display: inline-block;
   margin: 5px;
   padding: 5px 15px;
+  width: 70px;
+  height: 70px;
   font-size: 24px;
   text-transform: uppercase;
   border: 1px solid blue;

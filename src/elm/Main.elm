@@ -154,7 +154,7 @@ getBoardDict : Board -> BoardDict
 getBoardDict board =
     let
         encodeTile : Int -> Int -> Tile -> ( Point, Tile )
-        encodeTile x y tile =
+        encodeTile y x tile =
             ( ( x, y ), tile )
 
         encodeRow : Int -> Row -> List ( Point, Tile )
@@ -162,6 +162,67 @@ getBoardDict board =
             List.indexedMap (encodeTile index) row
     in
         Dict.fromList <| List.concatMap (\n -> n) (List.indexedMap encodeRow board)
+
+
+type Step
+    = Step { point : Point, nextSteps : List Step }
+
+
+getAllPaths : BoardDict -> String -> List Step
+getAllPaths board word =
+    let
+        makeStep : String -> Point -> Maybe Step
+        makeStep currentWord point =
+            if checkTileAtLocation (String.left 1 currentWord) point then
+                Just (Step { point = point, nextSteps = List.filterMap (makeStep (nextWord currentWord)) (getNeighbors point) })
+            else
+                Nothing
+
+        tileIsMatch : String -> Tile -> Bool
+        tileIsMatch letter tile =
+            letter == tile.letter
+
+        nextWord : String -> String
+        nextWord currentWord =
+            String.dropLeft 1 currentWord
+
+        checkTileAtLocation : String -> Point -> Bool
+        checkTileAtLocation currentWord point =
+            case Dict.get point board of
+                Just tile ->
+                    tileIsMatch currentWord tile
+
+                Nothing ->
+                    False
+    in
+        List.filterMap (makeStep word) <| Dict.keys board
+
+
+getFlatPaths : String -> List Step -> List (List Point)
+getFlatPaths string steps =
+    let
+        point : Step -> Point
+        point step =
+            case step of
+                Step info ->
+                    info.point
+
+        getAllPoints : Step -> List Point
+        getAllPoints step =
+            case step of
+                Step info ->
+                    List.append [ info.point ] (List.concatMap getAllPoints info.nextSteps)
+
+        completeMatchesOnly : List Point -> Bool
+        completeMatchesOnly pointsList =
+            (String.length string) == (List.length pointsList)
+    in
+        List.filter completeMatchesOnly <| List.map getAllPoints steps
+
+
+getHighlightedPoints : List (List Point) -> Set Point
+getHighlightedPoints paths =
+    Set.fromList (List.concat paths)
 
 
 
@@ -176,13 +237,18 @@ view model =
 
         makeTile tile =
             span [ classList [ ( "letter", True ), ( "letter--highlighted", tile.match ) ] ] [ text tile.letter ]
+
+        makeTemp point =
+            span [ classList [ ( "letter", True ) ] ] [ text (toString point) ]
     in
         div []
             [ h2 [] [ text <| toString model.score ]
             , div [ class "boardContainer" ] (List.map makeTile <| Dict.values model.board)
+            , div [ class "boardContainer" ] (List.map makeTemp <| Dict.keys model.board)
             , div []
                 [ input [ placeholder "Guess away!", onInput UpdateGuess, value model.currentGuess ] []
                 , button [ onClick ScoreWord ] [ text "Check" ]
                 ]
-            , div [] [ text <| toString model.board ]
+            , div [] [ text <| toString (getAllPaths model.board "aa") ]
+            , div [] [ text <| toString (getFlatPaths "aa" (getAllPaths model.board "aa")) ]
             ]
