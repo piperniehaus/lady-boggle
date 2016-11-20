@@ -5,6 +5,7 @@ import Html.Attributes exposing (placeholder, value, classList, class)
 import Html.Events exposing (onClick, onInput)
 import Dict exposing (Dict)
 import Set exposing (Set)
+import Array exposing (Array)
 
 
 -- APP
@@ -37,6 +38,22 @@ type alias Point =
 
 type alias Row =
     List Tile
+
+
+type alias StartingPoints =
+    List Point
+
+
+type alias Path =
+    List Point
+
+
+type alias Paths =
+    List Path
+
+
+type alias BoardDict =
+    Dict Point Tile
 
 
 model : Model
@@ -76,6 +93,11 @@ type Msg
     | UpdateGuess String
 
 
+firstLetter : String -> String
+firstLetter string =
+    String.slice 0 1 string
+
+
 update : Msg -> Model -> Model
 update msg model =
     case msg of
@@ -90,13 +112,13 @@ update msg model =
 
         UpdateGuess guess ->
             let
-                firstLetter : String -> String
-                firstLetter string =
-                    String.slice 0 1 string
+                checkTile : String -> Tile -> Tile
+                checkTile guessLetter tile =
+                    { tile | match = (guessLetter == tile.letter) }
 
                 matchFirstLetter : Point -> Tile -> Tile
                 matchFirstLetter point tile =
-                    checkTile (firstLetter guess) point tile
+                    checkTile (firstLetter guess) tile
 
                 isMatching : Point -> Tile -> Bool
                 isMatching _ tile =
@@ -109,15 +131,16 @@ update msg model =
                             Dict.filter isMatching <|
                                 Dict.map matchFirstLetter model.board
 
-                mappingThingy : Point -> Tile -> Tile
-                mappingThingy point tile =
+                findNeighbors : Point -> Tile -> Tile
+                findNeighbors point tile =
                     if List.member point neighborList then
                         { tile | match = True }
                     else
                         tile
 
+                -- findMatches : Point -> Tile -> Path
                 newDict =
-                    Dict.map mappingThingy model.board
+                    Dict.map findNeighbors board
             in
                 { model
                     | currentGuess = guess
@@ -125,97 +148,37 @@ update msg model =
                 }
 
 
-
--- starting points are the places where the first letter matches
-
-
-updateGuess : String -> String
-updateGuess guess =
-    -- guess - the first letter
-    guess
-
-
-type alias StartingPoints =
-    List Point
-
-
-toPath : Point -> Path
-toPath point =
-    [ point ]
-
-
-matchingNeighbors : BoardDict -> Point -> String -> List Point
-matchingNeighbors board point letter =
-    let
-        matchList ( x, y ) =
-            Set.toList <|
-                Set.remove ( x, y ) <|
-                    Set.fromList
-                        [ ( max (x - 1) 0, max (y - 1) 0 )
-                        , ( max (x - 1) 0, y )
-                        , ( max (x - 1) 0, min (y + 1) boardWidth )
-                        , ( x, max (y - 1) 0 )
-                        , ( x, min (y + 1) boardWidth )
-                        , ( min (x + 1) boardWidth, max (y - 1) 0 )
-                        , ( min (x + 1) boardWidth, y )
-                        , ( min (x + 1) boardWidth, min (y + 1) boardWidth )
-                        ]
-
-        isMatch : Point -> Tile -> Bool
-        isMatch point tile =
-            (List.member point matchList) && tile.letter == letter
-    in
-        Dict.keys <| Dict.filter isMatch board
-
-
 explorePath : BoardDict -> Path -> String -> Path
 explorePath board path word =
     let
-        lastPoint : path -> point
+        lastPoint : Path -> Maybe Point
         lastPoint path =
-            List.drop 1 path
+            Array.get ((List.length path) - 1) (Array.fromList path)
 
         shortenedWord word =
             String.dropLeft 1 word
 
         travel : BoardDict -> String -> Path -> Path
-        travel board path word =
-            List.append (matchingNeighbors board (lastPoint path) word) path
+        travel board word path =
+            List.append (matchingNeighbors board (lastPoint path) (firstLetter word)) path
     in
         if String.length word > 0 then
-            explorePath board (travel board path word) <| shortenedWord word
+            explorePath board (travel board word path) <| shortenedWord word
         else
             path
 
 
-findPaths : StartingPoints -> Paths
-findPaths startingPoints =
-    -- iterate through starting points
-    List.map (\point -> explorePath (toPath point) "remainingGuess") startingPoints
+matchingNeighbors : BoardDict -> Maybe Point -> String -> List Point
+matchingNeighbors board point letter =
+    let
+        isMatch : Point -> Tile -> Bool
+        isMatch point tile =
+            (List.member point <| getNeighbors point) && tile.letter == letter
+    in
+        Dict.keys <| Dict.filter isMatch board
 
 
-type alias Path =
-    List Point
-
-
-type alias Paths =
-    List Path
-
-
-
---
--- updateGuess(guess)
---  startingPoints = List(tuple)
---  startingPoints.each (
--- path = explorePoint([point], remainingWord))
--- if path then update dictionary with things in path
---explorePoint(list, word)
--- if word is nil return list
--- else if no neighbords return nil
--- getNeighbors(tail(list)).filter(neighbor.letter == firstLetter word, explorePoint(list+neighbor, remainingWord))
-
-
-getNeighbors : Point -> Tile -> Bool
+getNeighbors : Point -> List Point
 getNeighbors ( x, y ) =
     Set.toList <|
         Set.remove ( x, y ) <|
@@ -229,19 +192,6 @@ getNeighbors ( x, y ) =
                 , ( min (x + 1) boardWidth, y )
                 , ( min (x + 1) boardWidth, min (y + 1) boardWidth )
                 ]
-
-
-type alias Entry =
-    ( Point, Tile )
-
-
-checkTile : String -> Point -> Tile -> Tile
-checkTile guessLetter location tile =
-    { tile | match = (guessLetter == tile.letter) }
-
-
-type alias BoardDict =
-    Dict Point Tile
 
 
 getBoardDict : Board -> BoardDict
