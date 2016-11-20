@@ -188,8 +188,6 @@ explorePath board path word =
                         []
                 )
                 (matchingNeighbors board (lastPoint path) (firstLetter word))
-
-        -- TODO only append neighbors that don't already exist
     in
         if String.length word > 0 then
             List.concatMap (\aPath -> (explorePath board aPath <| shortenedWord word)) (travel board word path)
