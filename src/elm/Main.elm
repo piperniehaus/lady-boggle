@@ -53,7 +53,13 @@ board : BoardDict
 board =
     let
         letters =
-            [ [ "a", "b", "a" ], [ "a", "d", "k" ], [ "p", "w", "z" ] ]
+            [ [ "a", "b", "a", "t", "f", "i" ]
+            , [ "e", "d", "k", "p", "e", "n" ]
+            , [ "p", "w", "d", "r", "a", "g" ]
+            , [ "a", "e", "q", "u", "t", "e" ]
+            , [ "k", "r", "i", "w", "p", "b" ]
+            , [ "e", "w", "v", "d", "d", "k" ]
+            ]
 
         tilesForRow : List String -> Row
         tilesForRow row =
