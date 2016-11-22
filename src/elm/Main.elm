@@ -90,34 +90,8 @@ update msg model =
 
         UpdateGuess guess ->
             let
-                firstLetter : String -> String
-                firstLetter string =
-                    String.slice 0 1 string
-
-                matchFirstLetter : Point -> Tile -> Tile
-                matchFirstLetter point tile =
-                    checkTile (firstLetter guess) point tile
-
-                isMatching : Point -> Tile -> Bool
-                isMatching _ tile =
-                    tile.match
-
-                neighborList : List Point
-                neighborList =
-                    List.concatMap getNeighbors <|
-                        Dict.keys <|
-                            Dict.filter isMatching <|
-                                Dict.map matchFirstLetter model.board
-
-                mappingThingy : Point -> Tile -> Tile
-                mappingThingy point tile =
-                    if List.member point neighborList then
-                        { tile | match = True }
-                    else
-                        tile
-
                 newDict =
-                    Dict.map mappingThingy model.board
+                    setMatches model.board guess
             in
                 { model
                     | currentGuess = guess
@@ -125,20 +99,25 @@ update msg model =
                 }
 
 
-getNeighbors : Point -> List Point
-getNeighbors ( x, y ) =
-    Set.toList <|
-        Set.remove ( x, y ) <|
-            Set.fromList
-                [ ( max (x - 1) 0, max (y - 1) 0 )
-                , ( max (x - 1) 0, y )
-                , ( max (x - 1) 0, min (y + 1) boardWidth )
-                , ( x, max (y - 1) 0 )
-                , ( x, min (y + 1) boardWidth )
-                , ( min (x + 1) boardWidth, max (y - 1) 0 )
-                , ( min (x + 1) boardWidth, y )
-                , ( min (x + 1) boardWidth, min (y + 1) boardWidth )
-                ]
+getNeighbors : BoardDict -> Point -> List Point
+getNeighbors board ( x, y ) =
+    let
+        realPointsOnly point =
+            List.member point <| Dict.keys board
+    in
+        List.filter realPointsOnly <|
+            Set.toList <|
+                Set.remove ( x, y ) <|
+                    Set.fromList
+                        [ ( x, y - 1 )
+                        , ( x, y + 1 )
+                        , ( x - 1, y )
+                        , ( x + 1, y )
+                        , ( x - 1, y - 1 )
+                        , ( x - 1, y + 1 )
+                        , ( x + 1, y + 1 )
+                        , ( x + 1, y - 1 )
+                        ]
 
 
 checkTile : String -> Point -> Tile -> Tile
@@ -174,7 +153,7 @@ getAllPaths board word =
         makeStep : String -> Point -> Maybe Step
         makeStep currentWord point =
             if checkTileAtLocation (String.left 1 currentWord) point then
-                Just (Step { point = point, nextSteps = List.filterMap (makeStep (nextWord currentWord)) (getNeighbors point) })
+                Just (Step { point = point, nextSteps = List.filterMap (makeStep (nextWord currentWord)) (getNeighbors board point) })
             else
                 Nothing
 
@@ -211,7 +190,7 @@ getFlatPaths string steps =
         getAllPoints step =
             case step of
                 Step info ->
-                    List.append [ info.point ] (List.concatMap getAllPoints info.nextSteps)
+                    List.append [ info.point ] ((List.concatMap getAllPoints) info.nextSteps)
 
         completeMatchesOnly : List Point -> Bool
         completeMatchesOnly pointsList =
@@ -268,6 +247,6 @@ view model =
                 [ input [ placeholder "Guess away!", onInput UpdateGuess, value model.currentGuess ] []
                 , button [ onClick ScoreWord ] [ text "Check" ]
                 ]
-            , div [] [ text <| toString (getAllPaths model.board "aa") ]
-            , div [] [ text <| toString (getFlatPaths "aa" (getAllPaths model.board "aa")) ]
+            , div [] [ text <| toString (getAllPaths model.board model.currentGuess) ]
+            , div [] [ text <| toString (getFlatPaths model.currentGuess (getAllPaths model.board model.currentGuess)) ]
             ]
