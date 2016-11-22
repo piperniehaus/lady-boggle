@@ -194,7 +194,7 @@ getFlatPaths string steps =
 
         completeMatchesOnly : List Point -> Bool
         completeMatchesOnly pointsList =
-            (String.length string) == (List.length pointsList)
+            (String.length string) <= (List.length pointsList)
     in
         List.filter completeMatchesOnly <| List.map getAllPoints steps
 
@@ -242,7 +242,7 @@ view model =
         div []
             [ h2 [] [ text <| toString model.score ]
             , div [ class "boardContainer" ] (List.map makeTile <| Dict.values model.board)
-            , div [ class "boardContainer" ] (List.map makeTemp <| Dict.keys model.board)
+              -- , div [ class "boardContainer" ] (List.map makeTemp <| Dict.keys model.board)
             , div []
                 [ input [ placeholder "Guess away!", onInput UpdateGuess, value model.currentGuess ] []
                 , button [ onClick ScoreWord ] [ text "Check" ]
