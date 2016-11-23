@@ -7,6 +7,7 @@ import Dict exposing (Dict)
 import Set exposing (Set)
 import Array exposing (Array)
 import Random exposing (Generator)
+import Task
 
 
 -- APP
@@ -27,11 +28,7 @@ main =
 
 
 type alias Model =
-    { board : BoardDict, score : Int, currentGuess : String }
-
-
-type alias Board =
-    List Row
+    { board : Board, score : Int, currentGuess : String }
 
 
 type alias Tile =
@@ -42,41 +39,18 @@ type alias Point =
     ( Int, Int )
 
 
-type alias Row =
-    List Tile
-
-
 model : Model
 model =
-    { board = board, score = 0, currentGuess = "" }
+    { board = initBoard, score = 0, currentGuess = "" }
 
 
-boardWidth : Int
-boardWidth =
-    3
-
-
-board : BoardDict
-board =
+initBoard : Board
+initBoard =
     let
-        letters =
-            [ [ "a", "b", "a", "t", "f", "i" ]
-            , [ "e", "d", "k", "p", "e", "n" ]
-            , [ "p", "w", "d", "r", "a", "g" ]
-            , [ "a", "e", "q", "u", "t", "e" ]
-            , [ "k", "r", "i", "w", "p", "b" ]
-            , [ "e", "w", "v", "d", "d", "k" ]
-            ]
-
-        tilesForRow : List String -> Row
-        tilesForRow row =
-            List.map tileForLetter row
-
-        tileForLetter : String -> Tile
-        tileForLetter letter =
-            { letter = letter, match = False }
+        ( board, seed ) =
+            Random.step boardGen <| Random.initialSeed 123
     in
-        getBoardDict <| List.map tilesForRow letters
+        board
 
 
 
@@ -87,7 +61,7 @@ type Msg
     = NoOp
     | ScoreWord
     | UpdateGuess String
-    | NewGame (List String)
+    | NewGame Board
     | Shuffle
 
 
@@ -108,7 +82,7 @@ update msg model =
         UpdateGuess guess ->
             let
                 newDict =
-                    setMatches model.board guess
+                    Debug.log "UpdateGuess dict" <| setMatches model.board guess
             in
                 ( { model
                     | currentGuess = guess
@@ -117,18 +91,14 @@ update msg model =
                 , Cmd.none
                 )
 
-        NewGame list ->
-            let
-                foo =
-                    Debug.log "newgame" list
-            in
-                ( { model | board = board }, Cmd.none )
+        NewGame board ->
+            ( { model | board = board, currentGuess = "" }, Cmd.none )
 
         Shuffle ->
-            ( model, Random.generate NewGame boardGen )
+            ( { model | currentGuess = "" }, Random.generate NewGame boardGen )
 
 
-boardGen : Generator (List String)
+boardGen : Generator Board
 boardGen =
     let
         tileDistribution : List ( String, Int )
@@ -162,9 +132,9 @@ boardGen =
 
         intList : Generator (List Int)
         intList =
-            Random.list 36 (Random.int 0 (List.length lettersList))
+            Random.list 36 (Random.int 0 (List.length allLettersList))
 
-        lettersList =
+        allLettersList =
             let
                 makeRepeatedList ( letter, number ) =
                     List.repeat number letter
@@ -173,11 +143,15 @@ boardGen =
 
         getIndex list number =
             Maybe.withDefault "a" (Array.get number (Array.fromList list))
+
+        lettersList : List Int -> List String
+        lettersList intList =
+            List.map (getIndex allLettersList) intList
     in
-        Random.map (\list -> List.map (getIndex lettersList) list) intList
+        Random.map (getBoard << lettersList) intList
 
 
-getNeighbors : BoardDict -> Point -> List Point
+getNeighbors : Board -> Point -> List Point
 getNeighbors board ( x, y ) =
     let
         realPointsOnly point =
@@ -203,29 +177,33 @@ checkTile guessLetter location tile =
     { tile | match = (guessLetter == tile.letter) }
 
 
-type alias BoardDict =
+type alias Board =
     Dict Point Tile
 
 
-getBoardDict : Board -> BoardDict
-getBoardDict board =
+getBoard : List String -> Board
+getBoard board =
     let
-        encodeTile : Int -> Int -> Tile -> ( Point, Tile )
-        encodeTile y x tile =
-            ( ( x, y ), tile )
+        tileForLetter : String -> Tile
+        tileForLetter letter =
+            { letter = letter, match = False }
 
-        encodeRow : Int -> Row -> List ( Point, Tile )
-        encodeRow index row =
-            List.indexedMap (encodeTile index) row
+        encodeTile : Int -> Int -> String -> ( Point, Tile )
+        encodeTile y x letter =
+            ( ( x, y ), (tileForLetter letter) )
+
+        encodeRows : Int -> String -> ( Point, Tile )
+        encodeRows index letter =
+            encodeTile (index % 6) (index // 6) letter
     in
-        Dict.fromList <| List.concatMap (\n -> n) (List.indexedMap encodeRow board)
+        Dict.fromList <| (List.indexedMap encodeRows board)
 
 
 type Step
     = Step { point : Point, nextSteps : List Step }
 
 
-getAllPaths : BoardDict -> String -> List Step
+getAllPaths : Board -> String -> List Step
 getAllPaths board word =
     let
         makeStep : String -> Point -> Maybe Step
@@ -288,12 +266,12 @@ getHighlightedPoints paths =
     Set.fromList (List.concat paths)
 
 
-setMatches : BoardDict -> String -> BoardDict
+setMatches : Board -> String -> Board
 setMatches board string =
     let
         highlightedPoints : Set Point
         highlightedPoints =
-            getHighlightedPoints <| getFlatPaths string (getAllPaths model.board string)
+            getHighlightedPoints <| getFlatPaths string (getAllPaths board string)
 
         updateMatch : Point -> Tile -> Tile
         updateMatch point tile =
