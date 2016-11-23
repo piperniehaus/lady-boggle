@@ -14,7 +14,12 @@ import Random exposing (Generator)
 
 main : Program Never Model Msg
 main =
-    Html.program { init = ( model, Cmd.none ), subscriptions = (\_ -> Sub.none), view = view, update = update }
+    Html.program
+        { init = ( model, Cmd.none )
+        , subscriptions = (\_ -> Sub.none)
+        , view = view
+        , update = update
+        }
 
 
 
@@ -82,6 +87,8 @@ type Msg
     = NoOp
     | ScoreWord
     | UpdateGuess String
+    | NewGame (List String)
+    | Shuffle
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -109,6 +116,65 @@ update msg model =
                   }
                 , Cmd.none
                 )
+
+        NewGame list ->
+            let
+                foo =
+                    Debug.log "newgame" list
+            in
+                ( { model | board = board }, Cmd.none )
+
+        Shuffle ->
+            ( model, Random.generate NewGame boardGen )
+
+
+boardGen : Generator (List String)
+boardGen =
+    let
+        tileDistribution : List ( String, Int )
+        tileDistribution =
+            [ ( "e", 12 )
+            , ( "a", 9 )
+            , ( "i", 9 )
+            , ( "o", 8 )
+            , ( "n", 6 )
+            , ( "r", 6 )
+            , ( "t", 6 )
+            , ( "l", 6 )
+            , ( "s", 6 )
+            , ( "u", 6 )
+            , ( "d", 4 )
+            , ( "g", 3 )
+            , ( "b", 2 )
+            , ( "c", 2 )
+            , ( "m", 2 )
+            , ( "p", 2 )
+            , ( "f", 2 )
+            , ( "h", 2 )
+            , ( "v", 2 )
+            , ( "w", 2 )
+            , ( "y", 2 )
+            , ( "k", 1 )
+            , ( "j", 1 )
+            , ( "q", 1 )
+            , ( "z", 1 )
+            ]
+
+        intList : Generator (List Int)
+        intList =
+            Random.list 36 (Random.int 0 (List.length lettersList))
+
+        lettersList =
+            let
+                makeRepeatedList ( letter, number ) =
+                    List.repeat number letter
+            in
+                List.concat <| List.map makeRepeatedList tileDistribution
+
+        getIndex list number =
+            Maybe.withDefault "a" (Array.get number (Array.fromList list))
+    in
+        Random.map (\list -> List.map (getIndex lettersList) list) intList
 
 
 getNeighbors : BoardDict -> Point -> List Point
@@ -189,55 +255,6 @@ getAllPaths board word =
         List.filterMap (makeStep word) <| Dict.keys board
 
 
-tileDistribution : List ( String, Int )
-tileDistribution =
-    [ ( "e", 12 )
-    , ( "a", 9 )
-    , ( "i", 9 )
-    , ( "o", 8 )
-    , ( "n", 6 )
-    , ( "r", 6 )
-    , ( "t", 6 )
-    , ( "l", 6 )
-    , ( "s", 6 )
-    , ( "u", 6 )
-    , ( "d", 4 )
-    , ( "g", 3 )
-    , ( "b", 2 )
-    , ( "c", 2 )
-    , ( "m", 2 )
-    , ( "p", 2 )
-    , ( "f", 2 )
-    , ( "h", 2 )
-    , ( "v", 2 )
-    , ( "w", 2 )
-    , ( "y", 2 )
-    , ( "k", 1 )
-    , ( "j", 1 )
-    , ( "q", 1 )
-    , ( "z", 1 )
-    ]
-
-
-randomLetterListOfLength : Int -> List String
-randomLetterListOfLength number =
-    let
-        makeRepeatedList ( letter, number ) =
-            List.repeat number letter
-
-        getIndex list =
-            Maybe.withDefault "a" (Array.get number list)
-
-        intList : Generator (List Int)
-        intList =
-            Random.list number (Random.int 0 (List.length lettersList))
-
-        lettersList =
-            List.concat <| List.map makeRepeatedList tileDistribution
-    in
-        [ getIndex <| Array.fromList lettersList ]
-
-
 getFlatPaths : String -> List Step -> List (List Point)
 getFlatPaths string steps =
     let
@@ -314,6 +331,7 @@ view model =
                 [ input [ placeholder "Guess away!", onInput UpdateGuess, value model.currentGuess ] []
                 , button [ onClick ScoreWord ] [ text "Check" ]
                 ]
+            , button [ onClick Shuffle ] [ text "Shuffle" ]
             , div [] [ text <| toString (getAllPaths model.board model.currentGuess) ]
             , div [] [ text <| toString (getFlatPaths model.currentGuess (getAllPaths model.board model.currentGuess)) ]
             ]
