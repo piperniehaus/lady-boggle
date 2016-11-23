@@ -186,23 +186,29 @@ getAllPaths board word =
 getFlatPaths : String -> List Step -> List (List Point)
 getFlatPaths string steps =
     let
-        point : Step -> Point
-        point step =
-            case step of
-                Step info ->
-                    info.point
+        getAllPoints : List (List Point) -> Step -> List (List Point)
+        getAllPoints pathSoFar step =
+            let
+                nextPathSoFar : Point -> List (List Point)
+                nextPathSoFar point =
+                    List.map (List.append [ point ]) pathSoFar
 
-        getAllPoints : Step -> List Point
-        getAllPoints step =
-            case step of
-                Step info ->
-                    List.append [ info.point ] ((List.concatMap getAllPoints) info.nextSteps)
+                -- For each step, append to the previous steps.
+            in
+                case step of
+                    Step info ->
+                        if List.length info.nextSteps > 0 then
+                            List.concatMap (getAllPoints (nextPathSoFar info.point)) info.nextSteps
+                        else
+                            nextPathSoFar info.point
 
+        -- List.append [ info.point ] ((List.concatMap getAllPoints) info.nextSteps)
         completeMatchesOnly : List Point -> Bool
         completeMatchesOnly pointsList =
-            (String.length string) <= (List.length pointsList)
+            -- True
+            (String.length string) == (Set.size (Set.fromList pointsList))
     in
-        List.filter completeMatchesOnly <| List.map getAllPoints steps
+        List.filter completeMatchesOnly <| List.concatMap (getAllPoints [ [] ]) steps
 
 
 getHighlightedPoints : List (List Point) -> Set Point
