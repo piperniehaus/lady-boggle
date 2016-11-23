@@ -5,6 +5,8 @@ import Html.Attributes exposing (placeholder, value, classList, class)
 import Html.Events exposing (onClick, onInput)
 import Dict exposing (Dict)
 import Set exposing (Set)
+import Array exposing (Array)
+import Random exposing (Generator)
 
 
 -- APP
@@ -12,7 +14,7 @@ import Set exposing (Set)
 
 main : Program Never Model Msg
 main =
-    Html.beginnerProgram { model = model, view = view, update = update }
+    Html.program { init = ( model, Cmd.none ), subscriptions = (\_ -> Sub.none), view = view, update = update }
 
 
 
@@ -82,27 +84,31 @@ type Msg
     | UpdateGuess String
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         NoOp ->
-            model
+            ( model, Cmd.none )
 
         ScoreWord ->
-            { model
+            ( { model
                 | score = model.score + (String.length model.currentGuess)
                 , currentGuess = ""
-            }
+              }
+            , Cmd.none
+            )
 
         UpdateGuess guess ->
             let
                 newDict =
                     setMatches model.board guess
             in
-                { model
+                ( { model
                     | currentGuess = guess
                     , board = newDict
-                }
+                  }
+                , Cmd.none
+                )
 
 
 getNeighbors : BoardDict -> Point -> List Point
@@ -181,6 +187,55 @@ getAllPaths board word =
                     False
     in
         List.filterMap (makeStep word) <| Dict.keys board
+
+
+tileDistribution : List ( String, Int )
+tileDistribution =
+    [ ( "e", 12 )
+    , ( "a", 9 )
+    , ( "i", 9 )
+    , ( "o", 8 )
+    , ( "n", 6 )
+    , ( "r", 6 )
+    , ( "t", 6 )
+    , ( "l", 6 )
+    , ( "s", 6 )
+    , ( "u", 6 )
+    , ( "d", 4 )
+    , ( "g", 3 )
+    , ( "b", 2 )
+    , ( "c", 2 )
+    , ( "m", 2 )
+    , ( "p", 2 )
+    , ( "f", 2 )
+    , ( "h", 2 )
+    , ( "v", 2 )
+    , ( "w", 2 )
+    , ( "y", 2 )
+    , ( "k", 1 )
+    , ( "j", 1 )
+    , ( "q", 1 )
+    , ( "z", 1 )
+    ]
+
+
+randomLetterListOfLength : Int -> List String
+randomLetterListOfLength number =
+    let
+        makeRepeatedList ( letter, number ) =
+            List.repeat number letter
+
+        getIndex list =
+            Maybe.withDefault "a" (Array.get number list)
+
+        intList : Generator (List Int)
+        intList =
+            Random.list number (Random.int 0 (List.length lettersList))
+
+        lettersList =
+            List.concat <| List.map makeRepeatedList tileDistribution
+    in
+        [ getIndex <| Array.fromList lettersList ]
 
 
 getFlatPaths : String -> List Step -> List (List Point)
