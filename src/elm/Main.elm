@@ -8,6 +8,7 @@ import Set exposing (Set)
 import Random exposing (Generator)
 import Components.Types exposing (..)
 import Components.BoardGenerator exposing (..)
+import Http exposing (Error)
 
 
 -- APP
@@ -32,16 +33,50 @@ model =
     { board = initBoard, score = 0, currentGuess = "" }
 
 
+lookupWordRequest : String -> Http.Request String
+lookupWordRequest word =
+    Http.request
+        { method = "GET"
+        , headers =
+            [ (Http.header "Accept" "application/json")
+            , (Http.header "app_id" "22df95a1")
+            , (Http.header "app_key" "c0fc077c8b3fda69c9626a91ad317685")
+              -- , (Http.header "Origin" "http://elm-lang.org")
+              -- , (Http.header "Access-Control-Request-Method" "GET")
+              -- , (Http.header "Access-Control-Request-Headers" "JSON")
+              -- , (Http.header "Access-Control-Allow-Origin" "https://od-api.oxforddictionaries.com")
+            ]
+        , url = "https://od-api.oxforddictionaries.com:443/api/v1/entries/en/piper"
+        , body = Http.emptyBody
+        , expect = Http.expectString
+        , timeout = Nothing
+        , withCredentials = False
+        }
+
+
+lookupWord : String -> Cmd Msg
+lookupWord word =
+    Http.send lookupWordResult (lookupWordRequest word)
+
+
+lookupWordResult : Result x a -> Msg
+lookupWordResult result =
+    Result.withDefault WordNotFound <| Result.map (\_ -> WordFound) result
+
+
 
 -- UPDATE
 
 
 type Msg
     = NoOp
-    | ScoreWord
+    | LookupWord String
     | UpdateGuess String
     | NewGame Board
     | Shuffle
+    | WordFound
+    | WordNotFound
+    | AddLetter String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -50,31 +85,42 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
 
-        ScoreWord ->
-            ( { model
-                | score = model.score + (String.length model.currentGuess)
-                , currentGuess = ""
-              }
-            , Cmd.none
-            )
+        LookupWord word ->
+            ( model, lookupWord word )
+
+        WordFound ->
+            ( model, Cmd.none )
+
+        WordNotFound ->
+            ( model, Cmd.none )
 
         UpdateGuess guess ->
-            let
-                newDict =
-                    Debug.log "UpdateGuess dict" <| setMatches model.board guess
-            in
-                ( { model
-                    | currentGuess = guess
-                    , board = newDict
-                  }
-                , Cmd.none
-                )
+            ( updateGuess guess model
+            , Cmd.none
+            )
 
         NewGame board ->
             ( { model | board = board, currentGuess = "" }, Cmd.none )
 
         Shuffle ->
             ( { model | currentGuess = "" }, Random.generate NewGame boardGen )
+
+        AddLetter letter ->
+            ( updateGuess (model.currentGuess ++ letter) model
+            , Cmd.none
+            )
+
+
+updateGuess : String -> Model -> Model
+updateGuess guess model =
+    let
+        newDict =
+            Debug.log "UpdateGuess dict" <| setMatches model.board guess
+    in
+        { model
+            | currentGuess = guess
+            , board = newDict
+        }
 
 
 getNeighbors : Board -> Point -> List Point
@@ -186,7 +232,10 @@ setMatches board string =
             Set.member point highlightedPoints
     in
         -- Set.map highlightedPoints
-        Dict.map updateMatch board
+        if (Set.size highlightedPoints > 0) || (String.length string == 0) then
+            Dict.map updateMatch board
+        else
+            board
 
 
 
@@ -200,7 +249,16 @@ view model =
             div [] (List.map makeTile row)
 
         makeTile tile =
-            span [ classList [ ( "letter", True ), ( "letter--highlighted", tile.match ) ] ] [ text tile.letter ]
+            span
+                [ classList
+                    [ ( "letter", True )
+                    , ( "letter--highlighted"
+                      , tile.match
+                      )
+                    ]
+                , onClick (AddLetter tile.letter)
+                ]
+                [ text tile.letter ]
 
         makeTemp point =
             span [ classList [ ( "letter", True ) ] ] [ text (toString point) ]
@@ -211,7 +269,7 @@ view model =
               -- , div [ class "boardContainer" ] (List.map makeTemp <| Dict.keys model.board)
             , div []
                 [ input [ placeholder "Guess away!", onInput UpdateGuess, value model.currentGuess ] []
-                , button [ onClick ScoreWord ] [ text "Check" ]
+                , button [ onClick (LookupWord model.currentGuess) ] [ text "Check" ]
                 ]
             , button [ onClick Shuffle ] [ text "Shuffle" ]
             , div [] [ text <| toString (getAllPaths model.board model.currentGuess) ]
