@@ -7,7 +7,6 @@ import Dict exposing (Dict)
 import Set exposing (Set)
 import Array exposing (Array)
 import Random exposing (Generator)
-import Task
 
 
 -- APP
