@@ -50,7 +50,7 @@ lookupWordRequest word =
         , body = Http.emptyBody
         , expect = Http.expectString
         , timeout = Nothing
-        , withCredentials = False
+        , withCredentials = True
         }
 
 
