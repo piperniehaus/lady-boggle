@@ -33,30 +33,9 @@ model =
     { board = initBoard, score = 0, currentGuess = "" }
 
 
-lookupWordRequest : String -> Http.Request String
-lookupWordRequest word =
-    Http.request
-        { method = "GET"
-        , headers =
-            [ (Http.header "Accept" "application/json")
-            , (Http.header "app_id" "22df95a1")
-            , (Http.header "app_key" "c0fc077c8b3fda69c9626a91ad317685")
-              -- , (Http.header "Origin" "http://elm-lang.org")
-              -- , (Http.header "Access-Control-Request-Method" "GET")
-              -- , (Http.header "Access-Control-Request-Headers" "JSON")
-              -- , (Http.header "Access-Control-Allow-Origin" "https://od-api.oxforddictionaries.com")
-            ]
-        , url = "https://od-api.oxforddictionaries.com:443/api/v1/entries/en/piper"
-        , body = Http.emptyBody
-        , expect = Http.expectString
-        , timeout = Nothing
-        , withCredentials = True
-        }
-
-
 lookupWord : String -> Cmd Msg
 lookupWord word =
-    Http.send lookupWordResult (lookupWordRequest word)
+    Http.send lookupWordResult <| Http.getString "http://api.wordnik.com:80/v4/word.json/piper?useCanonical=false&includeSuggestions=false&api_key=a2a73e7b926c924fad7001ca3111acd55af2ffabf50eb4ae5"
 
 
 lookupWordResult : Result x a -> Msg
@@ -89,7 +68,7 @@ update msg model =
             ( model, lookupWord word )
 
         WordFound ->
-            ( model, Cmd.none )
+            ( { model | score = model.score + 1 }, Cmd.none )
 
         WordNotFound ->
             ( model, Cmd.none )
