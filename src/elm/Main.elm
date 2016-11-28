@@ -9,6 +9,8 @@ import Random exposing (Generator)
 import Components.Types exposing (..)
 import Components.BoardGenerator exposing (..)
 import Http exposing (Error)
+import Json.Decode as Json
+import Dict exposing (Dict)
 
 
 -- APP
@@ -35,15 +37,22 @@ model =
 
 lookupWord : String -> Cmd Msg
 lookupWord word =
-    Http.send lookupWordResult <| Http.getString "http://api.wordnik.com:80/v4/word.json/piper?useCanonical=false&includeSuggestions=false&api_key=a2a73e7b926c924fad7001ca3111acd55af2ffabf50eb4ae5"
+    Http.send lookupWordResult <| Http.get ("http://api.wordnik.com:80/v4/word.json/" ++ word ++ "?useCanonical=false&includeSuggestions=false&api_key=6c121082f765eadec23490399930023d7b0bd9fab7bba1069") <| lookupWordDecoder
 
 
 lookupWordResult : Result x a -> Msg
 lookupWordResult result =
-    Result.withDefault WordNotFound <| Result.map (\_ -> WordFound) result
+    Result.withDefault WordNotFound <| Result.map (\_ -> WordFound) (Debug.log "aa" (result))
+
+
+lookupWordDecoder : Json.Decoder Bool
+lookupWordDecoder =
+    Json.field "scrabble" Json.bool
 
 
 
+-- Json.dict Json.float
+-- get : String -> Decode.Decoder a -> Request a
 -- UPDATE
 
 
