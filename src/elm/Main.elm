@@ -21,7 +21,7 @@ main =
 
 
 type alias Model =
-    { board : BoardDict, score : Int, currentGuess : String }
+    { board : BoardDict, score : Int, currentGuess : String, foundWords : List String, hasMatch : Bool }
 
 
 type alias Board =
@@ -58,7 +58,7 @@ type alias BoardDict =
 
 model : Model
 model =
-    { board = board, score = 0, currentGuess = "" }
+    { board = board, score = 0, currentGuess = "", foundWords = [], hasMatch = False }
 
 
 boardWidth : Int
@@ -111,7 +111,16 @@ update msg model =
 
         ScoreWord ->
             { model
-                | score = model.score + (String.length model.currentGuess)
+                | score =
+                    if model.hasMatch then
+                        model.score + (String.length model.currentGuess)
+                    else
+                        model.score
+                , foundWords =
+                    if model.hasMatch then
+                        model.currentGuess :: model.foundWords
+                    else
+                        model.foundWords
                 , currentGuess = ""
             }
 
@@ -127,12 +136,13 @@ update msg model =
 
                 findPaths : List Path
                 findPaths =
-                    List.concat <|
-                        (List.map
-                            (\point -> (explorePath model.board [ point ] (shortenedWord guess)))
-                         <|
-                            Dict.keys firstLetterMatches
-                        )
+                    List.filter (\path -> List.length path == String.length guess) <|
+                        List.concat <|
+                            (List.map
+                                (\point -> (explorePath model.board [ point ] (shortenedWord guess)))
+                             <|
+                                Dict.keys firstLetterMatches
+                            )
 
                 firstLetterMatches : BoardDict
                 firstLetterMatches =
@@ -163,6 +173,7 @@ update msg model =
                 { model
                     | currentGuess = guess
                     , board = newDict
+                    , hasMatch = not <| Dict.isEmpty (Dict.filter (\key tile -> tile.match == True) newDict)
                 }
 
 
@@ -260,4 +271,6 @@ view model =
                 [ input [ placeholder "Guess away!", onInput UpdateGuess, value model.currentGuess ] []
                 , button [ onClick ScoreWord ] [ text "Check" ]
                 ]
+            , div [] [ text <| toString model.board ]
+            , text (toString model.foundWords)
             ]
