@@ -3,6 +3,13 @@ $icon-font-path: '~bootstrap-sass/assets/fonts/bootstrap/';
 @import '~bootstrap-sass/assets/stylesheets/_bootstrap.scss';
 
 // can add Boostrap overrides, additional Sass/CSS below...
+.game {
+    display: flex;
+}
+
+.guessed .letter--highlighted {
+  background-color: #8cc174;
+}
 
 .boardContainer {
   width: 350px;
@@ -20,4 +27,9 @@ $icon-font-path: '~bootstrap-sass/assets/fonts/bootstrap/';
 }
 .letter--highlighted {
   background-color: #cc33ff;
+}
+
+.foundWordContainer {
+  font-size: 20px;
+  padding-left: 50px;
 }

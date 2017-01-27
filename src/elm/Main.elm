@@ -1,11 +1,13 @@
 module Main exposing (..)
 
+import Platform exposing (Task)
 import Html exposing (..)
 import Html.Attributes exposing (placeholder, value, classList, class)
 import Html.Events exposing (onClick, onInput)
 import Dict exposing (Dict)
 import Set exposing (Set)
 import Array exposing (Array)
+import Dom exposing (focus, Error)
 
 
 -- APP
@@ -21,7 +23,7 @@ main =
 
 
 type alias Model =
-    { board : BoardDict, score : Int, currentGuess : String, foundWords : List String, hasMatch : Bool }
+    { board : BoardDict, score : Int, currentGuess : String, foundWords : List String, hasMatch : Bool, guessed : Bool, correct : Bool, doFocus : Task Dom.Error () }
 
 
 type alias Board =
@@ -58,7 +60,15 @@ type alias BoardDict =
 
 model : Model
 model =
-    { board = board, score = 0, currentGuess = "", foundWords = [], hasMatch = False }
+    { board = board
+    , score = 0
+    , currentGuess = ""
+    , foundWords = []
+    , hasMatch = False
+    , guessed = False
+    , correct = False
+    , doFocus = Dom.focus "guess-input"
+    }
 
 
 boardWidth : Int
@@ -112,16 +122,18 @@ update msg model =
         ScoreWord ->
             { model
                 | score =
-                    if model.hasMatch then
+                    if model.hasMatch && not (List.member model.currentGuess model.foundWords) then
                         model.score + (String.length model.currentGuess)
                     else
                         model.score
                 , foundWords =
-                    if model.hasMatch then
+                    if model.hasMatch && not (List.member model.currentGuess model.foundWords) then
                         model.currentGuess :: model.foundWords
                     else
                         model.foundWords
                 , currentGuess = ""
+                , guessed = True
+                , correct = model.hasMatch
             }
 
         UpdateGuess guess ->
@@ -174,6 +186,7 @@ update msg model =
                     | currentGuess = guess
                     , board = newDict
                     , hasMatch = not <| Dict.isEmpty (Dict.filter (\key tile -> tile.match == True) newDict)
+                    , guessed = False
                 }
 
 
@@ -263,14 +276,21 @@ view model =
 
         makeTile tile =
             span [ classList [ ( "letter", True ), ( "letter--highlighted", tile.match ) ] ] [ text tile.letter ]
+
+        makeFoundWord word =
+            div [ class "foundWord" ] [ text word ]
     in
         div []
-            [ h2 [] [ text <| toString model.score ]
-            , div [ class "boardContainer" ] (List.map makeTile <| Dict.values model.board)
-            , div []
-                [ input [ placeholder "Guess away!", onInput UpdateGuess, value model.currentGuess ] []
-                , button [ onClick ScoreWord ] [ text "Check" ]
+            [ div [ classList [ ( "game", True ), ( "guessed", model.guessed ), ( "correct", model.correct ) ] ]
+                [ div []
+                    [ h2 [] [ text <| "Score: " ++ toString model.score ]
+                    , div [ class "boardContainer" ] (List.map makeTile <| Dict.values model.board)
+                    , div []
+                        [ input [ Html.Attributes.id "guess-input", placeholder "Guess away!", onInput UpdateGuess, value model.currentGuess ] []
+                        , button [ onClick ScoreWord ] [ text "Check" ]
+                        ]
+                    ]
+                , div [ class "foundWordContainer" ] <| [ h2 [] [ text "Found Words" ] ] ++ (List.map makeFoundWord model.foundWords)
                 ]
             , div [] [ text <| toString model.board ]
-            , text (toString model.foundWords)
             ]
