@@ -1,6 +1,6 @@
 module Main exposing (..)
 
-import Platform exposing (Task)
+import Task exposing (Task)
 import Html exposing (..)
 import Html.Attributes exposing (placeholder, value, classList, class)
 import Html.Events exposing (onClick, onInput)
@@ -15,7 +15,12 @@ import Dom exposing (focus, Error)
 
 main : Program Never Model Msg
 main =
-    Html.beginnerProgram { model = model, view = view, update = update }
+    Html.program { init = init, subscriptions = subscriptions, view = view, update = update }
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.none
 
 
 
@@ -23,7 +28,7 @@ main =
 
 
 type alias Model =
-    { board : BoardDict, score : Int, currentGuess : String, foundWords : List String, hasMatch : Bool, guessed : Bool, correct : Bool, doFocus : Task Dom.Error () }
+    { board : BoardDict, score : Int, currentGuess : String, foundWords : List String, hasMatch : Bool, guessed : Bool, correct : Bool }
 
 
 type alias Board =
@@ -67,7 +72,6 @@ model =
     , hasMatch = False
     , guessed = False
     , correct = False
-    , doFocus = Dom.focus "guess-input"
     }
 
 
@@ -113,14 +117,19 @@ firstLetter string =
     String.slice 0 1 string
 
 
-update : Msg -> Model -> Model
+init : ( Model, Cmd Msg )
+init =
+    ( model, Cmd.none )
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         NoOp ->
-            model
+            ( model, Cmd.none )
 
         ScoreWord ->
-            { model
+            ( { model
                 | score =
                     if model.hasMatch && not (List.member model.currentGuess model.foundWords) then
                         model.score + (String.length model.currentGuess)
@@ -134,7 +143,9 @@ update msg model =
                 , currentGuess = ""
                 , guessed = True
                 , correct = model.hasMatch
-            }
+              }
+            , Task.attempt (always NoOp) (Dom.focus "guess-input")
+            )
 
         UpdateGuess guess ->
             let
@@ -182,12 +193,14 @@ update msg model =
                 newDict =
                     Dict.map findMatches board
             in
-                { model
+                ( { model
                     | currentGuess = guess
                     , board = newDict
                     , hasMatch = not <| Dict.isEmpty (Dict.filter (\key tile -> tile.match == True) newDict)
                     , guessed = False
-                }
+                  }
+                , Cmd.none
+                )
 
 
 shortenedWord : String -> String
@@ -292,5 +305,4 @@ view model =
                     ]
                 , div [ class "foundWordContainer" ] <| [ h2 [] [ text "Found Words" ] ] ++ (List.map makeFoundWord model.foundWords)
                 ]
-            , div [] [ text <| toString model.board ]
             ]
